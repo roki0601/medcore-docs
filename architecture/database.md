@@ -1,6 +1,6 @@
 # Database Draft
 
-Текущая схема — рабочий черновик. Она должна уточняться по мере реализации MVP.
+Текущая схема — рабочий черновик. Детальный реестр решений: `../decisions/0004-mvp-decision-register.md`.
 
 ## Content domain
 
@@ -11,105 +11,75 @@ Section
   ↓
 Topic
   ├── ContentBlock
-  ├── Flashcard
+  ├── Flashcard (topic optional)
   ├── Quiz
   │    └── QuizQuestion
   │         └── QuizAnswer
-  └── Source (optional M2M / through relation)
+  └── Source (optional M2M)
+
+Media/File
 ```
 
-## User domain
+## User / access domain
 
 ```text
 User
   ├── UserTopicProgress
   ├── FlashcardReview
-  └── QuizAttempt
-       └── QuizAttemptAnswer
-
-Subscription (later)
-  └── User
+  ├── QuizAttempt
+  └── Subscription
+       └── Plan/Tariff
 ```
 
-## Entities
+## User
 
-### User
+Поддерживает Telegram и login/password в одном аккаунте.
 
-Пользователь системы.
-
-Поддерживаются два способа входа:
-- Telegram;
-- логин + пароль.
-
-Telegram является основным пользовательским сценарием, логин/пароль — резервным.
-
-Предполагаемые поля/идентификаторы:
-- id;
-- username / login;
-- password hash (стандартный Django auth);
-- telegram_id — optional, unique when present;
-- telegram_username — optional;
-- first_name / last_name — optional;
-- role;
+Нужно заложить:
+- BigAutoField id;
+- unique username;
+- password hash через Django auth;
+- optional unique telegram_id;
+- optional telegram username;
+- optional email;
+- role: user/editor/admin;
 - is_active;
-- created_at;
-- updated_at.
+- timestamps.
 
-Роль и подписка не смешиваются. `premium` не является ролью.
+Из Telegram пока достаточно сохранять telegram_id и username.
 
-### Subscription
+## Subscription / tariff
 
-Добавляется при реализации монетизации.
+Subscription создаётся сразу, не позже.
 
-Примерные поля:
+Нужно поддержать несколько тарифов и trial.
+
+Минимально:
 - user;
-- plan;
+- plan/tariff;
 - status;
 - starts_at;
 - expires_at;
-- created_at;
-- updated_at.
+- trial-related data при необходимости;
+- timestamps.
 
-### Subject
+`premium` не является ролью.
 
-Предмет: микробиология, фармакология и т.д.
+## Subject / Section / Topic
 
-Предполагается уникальный `slug` для URL.
+Поддерживают slug для user-facing URL. Slug генерируется автоматически из title, допускается manual override и изменение позже.
 
-### Section
+Точная область uniqueness slug и полный набор полей — TBD.
 
-Раздел внутри предмета.
+Topic deletion физическое и каскадно удаляет зависимый контент.
 
-Предполагается `slug` для URL.
+## ContentBlock
 
-### Topic
+Универсальный optional блок.
 
-Основная учебная тема.
+Тип блока должен храниться в БД, а не быть только hardcoded enum, чтобы добавлять новые типы без миграции enum-кода.
 
-Предполагается `slug` для URL. ID остается primary key, slug используется в пользовательских маршрутах.
-
-### ContentBlock
-
-Универсальный необязательный блок внутри темы.
-
-Примеры типов:
-- short;
-- theory;
-- important;
-- mistakes;
-- custom.
-
-Предполагаемые поля:
-- type / semantic_key;
-- title;
-- body_markdown;
-- order;
-- status;
-- created_at;
-- updated_at;
-- reviewed_at — optional;
-- reviewed_by — optional;
-- published_at — optional.
+Основное содержимое — Markdown.
 
 Статусы:
 - draft;
@@ -117,113 +87,113 @@ Telegram является основным пользовательским сц
 - reviewed;
 - published.
 
-### Flashcard
+Нужны timestamps, reviewed_by, reviewed_at/published_at по необходимости.
 
-Карточка с вопросом и ответом. Хранится отдельно от ContentBlock, потому что по карточке нужен пользовательский прогресс и повторения.
+Manual content может сразу быть published.
 
-В domain-коде предпочтительны названия полей:
-- question;
-- answer.
+## Flashcard
 
-`front/back` — общепринятые термины для лицевой и обратной стороны карточки, но для MedCore `question/answer` читаются понятнее.
+Отдельная сущность. Topic relation допускается optional.
 
-Источники — optional.
+Sources optional.
 
-### Quiz
+Self-rating в MVP не нужен.
 
-Набор тестовых вопросов, связанный с темой.
+Для будущего FSRS предусмотреть состояние вроде:
+- next_review_at;
+- last_reviewed_at;
+- repetitions.
 
-Тема может иметь один или несколько Quiz.
+Одна текущая FlashcardReview на user+flashcard. Историю review events можно добавить позже отдельной таблицей.
 
-### QuizQuestion
+Названия question/answer, difficulty/order/status — часть полей ещё TBD согласно decision register.
 
-Один вопрос теста.
+## Quiz
 
-Для MVP:
-- один правильный ответ;
-- explanation — optional;
-- difficulty — optional;
-- sources — optional.
+Retake без ограничений.
 
-### QuizAnswer
+На MVP используется single-choice модель с одним правильным ответом (ранее принято, не отменено).
 
-Вариант ответа.
+Не фиксировать ровно 4 ответа на уровне БД.
 
-На уровне UI обычно ожидается 4 варианта, но БД не должна жестко требовать ровно 4 ответа. Это позволит позже поддерживать вопросы с другим количеством вариантов без изменения схемы.
+QuizAttempt сохраняется для каждой попытки, в том числе нужен механизм сохранения незавершённого прогресса.
 
-### Source
+Лучший score не хранить отдельно — вычислять из attempts.
 
-Источник информации.
+Полную запись ответа на каждый вопрос в виде QuizAttemptAnswer решено не хранить как обязательную модель. Нужно хранить ошибки/неправильные ответы пользователя в компактной форме; точная структура TBD.
 
-Связи с источниками должны быть необязательными и расширяемыми.
+Timeout не нужен. Глобального pass threshold пока нет. Для auto-completion Topic нужен score-based criterion, конкретный threshold TBD.
 
-Source может связываться как минимум с:
-- Topic;
-- ContentBlock;
-- Flashcard;
-- QuizQuestion.
+## Source
 
-Одна сущность может иметь несколько источников, один Source может использоваться многими сущностями.
+Переиспользуемая optional сущность.
 
-### UserTopicProgress
+Типы: textbook, presentation, article, website, guideline/methodical material, other.
 
-Состояние изучения темы пользователем.
+Metadata:
+- title;
+- author;
+- year;
+- url;
+- note.
 
-Нужно поддержать как минимум два независимых сигнала:
-- пользователь вручную отметил тему как изученную;
-- система считает тему завершенной по учебной активности.
+Связи optional M2M минимум с Topic, ContentBlock, Flashcard, QuizQuestion.
 
-Автоматическое завершение может учитывать прохождение всех обязательных тестов, но не должно ломать темы без тестов.
+Удаление Source удаляет M2M-связи, но не связанные учебные сущности.
 
-Примерные поля:
+Relation-level page/slide references пока не нужны.
+
+## Media/File
+
+Отдельная модель нужна.
+
+Файл хранится в object storage, в PostgreSQL — metadata, URL/key и связи.
+
+Конкретный storage provider TBD.
+
+## UserTopicProgress
+
+Статусы:
+- not_started;
+- learning;
+- learned.
+
+Отдельный repeat status пока не нужен.
+
+Нужны:
 - user;
 - topic;
-- is_marked_learned;
-- completed_at — optional;
-- created_at;
-- updated_at.
+- progress/state;
+- last_opened_at;
+- started_at;
+- completed_at;
+- признак/данные ручного завершения при необходимости.
 
-### FlashcardReview
-
-Состояние карточки для конкретного пользователя и история/данные повторений.
-
-FSRS не реализуется в первом MVP, но модель не должна мешать его добавлению позже.
-
-Полезно предусмотреть данные вроде:
-- user;
-- flashcard;
-- last_rating — optional;
-- review_count;
-- last_reviewed_at — optional;
-- next_review_at — optional.
-
-Конкретный алгоритм интервалов — отдельное будущее решение.
-
-### QuizAttempt
-
-Одна попытка пользователя пройти тест.
-
-### QuizAttemptAnswer
-
-Ответ пользователя на конкретный вопрос внутри попытки.
+Тема может завершаться вручную или автоматически по score тестов.
 
 ## Search
 
-Первый MVP использует простой поиск через Django ORM / PostgreSQL `icontains`.
+MVP: `icontains` по Subject.title, Section.title, Topic.title + filters по subject/section.
 
-Начальный scope:
-- Subject.title;
-- Section.title;
-- Topic.title.
+Поиск по ContentBlock предусмотреть позже.
 
 ## Deletion
 
-В MVP контент удаляется физически.
+В MVP используется физическое удаление.
 
-При реализации необходимо сознательно выбрать `CASCADE` / `PROTECT` для каждой связи, чтобы удаление родительской сущности не оставляло неконсистентные данные.
+User deletion каскадно удаляет progress/attempts.
+Topic deletion каскадно удаляет зависимый контент.
+Source deletion удаляет связи.
+
+## Infrastructure-related data decisions
+
+- PostgreSQL — primary datastore.
+- Redis — cache.
+- IDs — BigInt/BigAutoField.
+- timestamps timezone-aware, хранение времени в UTC.
+- migrations всегда коммитятся.
+- fixtures использовать.
 
 ## Main principle
 
-Учебные сущности внутри Topic необязательны. База данных не должна требовать, чтобы каждая тема имела краткий ответ, полный ответ, карточки, тест или источники.
-
-Требования к полноте контента лучше реализовать как бизнес-валидацию перед публикацией, а не жесткие ограничения схемы.
+Учебные сущности внутри Topic в целом optional. Не делать поля/связи обязательными только для удобства текущего контента без отдельного решения.
