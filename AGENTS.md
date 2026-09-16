@@ -7,8 +7,13 @@
 AI-агент должен:
 
 1. Прочитать `ai/context.md`.
-2. Прочитать релевантные файлы из `product/`, `architecture/`, `content/`.
-3. Проверить `decisions/`, чтобы не переизобретать уже принятое решение.
+2. Прочитать `decisions/0004-mvp-decision-register.md`.
+3. Прочитать релевантные файлы из `product/`, `architecture/`, `content/`.
+4. Проверить остальные `decisions/`, чтобы не переизобретать уже принятое решение.
+
+Если другой документ противоречит более новому ADR/decision register, приоритет имеет более новое явно принятое решение.
+
+`TBD` означает, что решение не принято. AI не должен самостоятельно выбирать вариант и выдавать его за согласованную архитектуру.
 
 ## Architecture guardrails
 
@@ -26,7 +31,6 @@ AI-агент должен:
 
 Не добавлять без конкретной необходимости:
 
-- Redis;
 - Celery;
 - Kafka/RabbitMQ;
 - Kubernetes;
@@ -36,30 +40,49 @@ AI-агент должен:
 - сложную event-аналитику;
 - FSRS.
 
-Новая инфраструктура или крупная зависимость должна решать конкретную существующую проблему, а не гипотетическую будущую.
+Redis является уже согласованной частью инфраструктуры для кэша и не требует нового ADR сам по себе. Расширять его использование на очереди/фоновые задачи без отдельного решения нельзя.
 
 ## Current fixed decisions
 
 - Backend: Django + DRF.
 - Frontend: Next.js.
 - Database: PostgreSQL.
+- Cache: Redis.
+- Python: 3.12.
+- Package manager: uv.
+- Lint/format: Ruff / Ruff format.
+- Tests: pytest.
 - API prefix: `/api/v1/`.
 - API authentication: Bearer JWT.
+- Access + refresh JWT; refresh хранится в httpOnly cookie.
+- Refresh token blacklist/revocation нужен.
 - Auth methods: Telegram + login/password.
-- Telegram является основным пользовательским auth flow, login/password — резервным.
+- Telegram — основной пользовательский auth flow, login/password — резервный.
+- User может одновременно иметь Telegram identity и login/password.
+- Email optional, оставлен на будущее.
 - Text content: Markdown.
 - Content hierarchy: `Subject → Section → Topic`.
 - Topic content entities are optional.
-- Flashcards and quizzes are separate domain entities, not generic ContentBlock.
-- Public content URLs use slugs; DB relations use normal IDs/FKs.
-- Search MVP: Django/PostgreSQL `icontains`.
+- Flashcards and quizzes are отдельными domain entities.
+- Public content URLs use slugs; DB relations use numeric IDs/FKs.
+- Search MVP: Django/PostgreSQL `icontains` по Subject/Section/Topic titles.
 - Roles and paid subscriptions are separate concepts. `premium` is not a role.
-- FSRS is deferred; do not introduce it into MVP without a new decision.
-- Product event analytics is deferred for MVP.
-- Content is physically deleted in MVP; FK deletion behavior must be explicit.
+- Subscription model создаётся сразу и поддерживает несколько тарифов/trial.
+- FSRS deferred; только задел в данных.
+- Product event analytics deferred for MVP.
+- Content physically deleted in MVP.
+- Object storage для файлов; отдельная Media/File model.
+- Django Admin — CMS; bulk import/publish нужны, детали позже.
+- Content only for authenticated users in MVP.
+- Backend enforces paywall.
+- Dark mode и mobile-first — сразу.
+- OpenAPI/Swagger — сразу.
+- Healthcheck: `/api/v1/health/`.
+
+Полный реестр решений: `decisions/0004-mvp-decision-register.md`.
 
 ## Content safety
 
-AI-generated medical content is not automatically trusted. The system must allow human review and publishing states.
+AI-generated medical content is not automatically trusted. Система должна поддерживать статусы `draft`, `generated`, `reviewed`, `published`, но на MVP допускается ручная публикация сразу как `published`.
 
-Sources are optional but supported for Topic, ContentBlock, Flashcard and QuizQuestion. Do not make sources mandatory at database level without a new ADR.
+Sources optional и могут связываться с Topic, ContentBlock, Flashcard и QuizQuestion. Не делать sources обязательными без нового решения.
