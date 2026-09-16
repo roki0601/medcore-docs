@@ -6,43 +6,42 @@
 Next.js frontend
       ↓ REST API / Bearer JWT
 Django + DRF backend
-      ↓
-PostgreSQL
+   ↓          ↓
+PostgreSQL   Redis (cache)
+   ↓
+Object storage for media
 ```
 
-Django Admin используется как внутренний CMS для наполнения и проверки контента.
+Django Admin используется как внутренний CMS для наполнения, импорта и проверки контента.
 
 ## Authentication
 
 Поддерживаются два способа аутентификации:
-
 1. Telegram — основной пользовательский сценарий.
 2. Логин + пароль — резервный способ входа.
 
-После успешной аутентификации backend выдает JWT. Frontend обращается к API через:
+Один User может иметь оба способа входа.
 
-```text
-Authorization: Bearer <access_token>
-```
+JWT:
+- access + refresh;
+- access передаётся как `Authorization: Bearer <token>`;
+- refresh хранится в httpOnly cookie;
+- нужен blacklist/revocation refresh tokens.
 
-API версионируется с первого дня:
-
-```text
-/api/v1/...
-```
-
-Telegram-аутентификация должна проверяться на backend. Frontend не является доверенной стороной для подтверждения Telegram identity.
+API prefix: `/api/v1/`.
 
 ## Principles
 
 - Backend и frontend разделены.
 - PostgreSQL — основной источник данных.
-- Контент хранится статически после генерации и проверки.
-- AI не нужен для большинства пользовательских запросов во время работы сервиса.
-- Архитектура должна оставаться простой до появления реальной нагрузки.
-- Роли пользователя и коммерческий доступ через подписку — разные подсистемы.
-- Публичные URL учебных сущностей используют slug, внутренние связи — обычные primary key/FK.
-- Основной формат текстового учебного контента — Markdown, а не HTML.
+- Redis используется для кэша.
+- Контент хранится статически после генерации/проверки.
+- AI/NotebookLM не участвует в пользовательском runtime.
+- Roles и subscriptions — разные подсистемы.
+- User-facing URLs используют slug; внутренние связи — numeric IDs/FKs.
+- Основной формат текста — Markdown.
+- Файлы/изображения — object storage + отдельная Media/File model.
+- Архитектура поддерживает несколько предметов с самого начала.
 
 ## Content flow
 
@@ -51,11 +50,11 @@ Telegram-аутентификация должна проверяться на b
    ↓
 Gemini Notebook / другой AI-инструмент
    ↓
-теория / карточки / тесты
+нормализованный JSON
    ↓
-импорт
+admin import / upload flow
    ↓
-ручная проверка
+manual review при необходимости
    ↓
 PostgreSQL
    ↓
@@ -64,44 +63,32 @@ Django API
 Next.js
 ```
 
-Статусы контента закладываются заранее:
-
-```text
-draft → generated → reviewed → published
-```
-
-При этом первое время контент может загружаться сразу как `published`, если он уже проверен вручную вне системы.
+Статусы: `draft`, `generated`, `reviewed`, `published`.
+Manual content может сразу публиковаться как `published`.
 
 ## Search
 
-Поиск первого MVP — простой поиск средствами Django/PostgreSQL через `icontains`.
+MVP: Django/PostgreSQL `icontains` по `Subject.title`, `Section.title`, `Topic.title`, плюс фильтры по предмету/разделу. Поиск по ContentBlock закладывается на будущее. Elasticsearch/OpenSearch не нужен.
 
-Начальный scope:
-- Subject.title
-- Section.title
-- Topic.title
+## Runtime / infrastructure
 
-Полнотекстовый поиск, Elasticsearch/OpenSearch и отдельный search-service пока не нужны.
+Current:
+- PostgreSQL;
+- Redis cache;
+- object storage;
+- Docker;
+- Render для backend как текущий план;
+- Vercel для frontend.
 
-## Files
-
-Текстовые данные и metadata хранятся в PostgreSQL.
-
-Изображения и файлы при необходимости хранятся в object storage, а в БД сохраняются URL и metadata.
-
-## Analytics
-
-Продуктовая event-аналитика полезна в будущем, но не является обязательной частью первого MVP. Техническое логирование backend-ошибок остается обычной эксплуатационной необходимостью.
-
-## Deferred infrastructure
-
-Для первого MVP не нужны:
+TBD / deferred:
 - Celery;
-- Redis;
 - Kafka/RabbitMQ;
 - Kubernetes;
-- микросервисы;
+- microservices;
 - Elasticsearch/OpenSearch;
-- FSRS.
+- FSRS;
+- Sentry.
 
-Если генерация/импорт позже станет тяжелым процессом, фоновые задачи добавляются отдельно. FSRS можно добавить позже поверх сохраненной истории повторений карточек.
+## Source of truth
+
+Полный список согласованных и TBD решений: `../decisions/0004-mvp-decision-register.md`.
