@@ -34,7 +34,7 @@
 - Search `icontains` по Subject/Section/Topic + filters.
 - Django Admin как CMS, bulk import и bulk publish нужны.
 - Subscription сущность создаётся сразу; несколько тарифов и trial должны поддерживаться.
-- Free/paywalled content; paywall проверяет backend.
+- Content access на уровне Topic: `demo`, `free`, `paid`; paywall проверяет backend.
 - Redis для кэша.
 - Object storage + Media/File model.
 - DRF throttling, CORS restrictions, technical logging.
@@ -66,13 +66,21 @@ Subscription не является ролью. `premium` не используе
 
 AI-imported content получает `generated`; manual content может сразу быть `published`.
 
-Часть контента может быть специально доступна как anonymous demo до авторизации.
-Это не означает публичность всего каталога: полный учебный контент и
-персональный learning state требуют authentication. Точная модель demo-content
-определяется отдельной content feature spec.
+Модель доступа к контенту:
+
+- `demo` Topic доступен anonymous users;
+- `free` Topic требует authentication;
+- `paid` Topic требует authentication + active entitlement/subscription;
+- каталог и безопасные metadata Subject/Section/Topic могут быть публичными;
+- внутри `free`/`paid` Topic отдельные элементы могут быть явно доступны как demo preview;
+- anonymous demo не создаёт персональный progress/attempts/reviews.
+
+Главный access boundary — Topic; сложная система ACL/наследования по каждому
+уровню в MVP не вводится. Детали реализации preview/API задаёт content spec.
 
 ## Source of truth
 
 Базовый реестр обсуждённых решений и TBD: `../decisions/0004-mvp-decision-register.md`.
 Более новые ADR в `../decisions/` имеют приоритет над конфликтующим старым
-текстом; anonymous demo access зафиксирован в ADR 0006.
+текстом; anonymous demo access зафиксирован в ADR 0006, а модель
+`demo/free/paid` — в ADR 0007.
