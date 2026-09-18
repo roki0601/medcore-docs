@@ -43,12 +43,8 @@ AI-агент обязан прочитать decision register и более н
 
 ## Authentication
 
-Поддерживаются:
-
-1. Telegram — основной flow.
-2. Login + password — резервный flow.
-
-Один User может иметь оба способа входа.
+В текущем MVP поддерживается только проверенный Telegram Login Widget.
+Password/email registration, linking других identity и unlink Telegram отложены.
 
 JWT:
 - access + refresh;
@@ -57,10 +53,9 @@ JWT:
 - нужен blacklist/revocation refresh tokens.
 
 User:
-- unique username;
-- optional email на будущее;
-- optional unique telegram_id;
-- из Telegram сохраняются минимум telegram_id и username.
+- unique mutable application username;
+- unique telegram_id stored directly on User;
+- отдельная Telegram identity table не нужна.
 
 API prefix: `/api/v1/`.
 
@@ -121,9 +116,9 @@ Topic progress:
 Тему можно отметить изученной вручную. Также система может автоматически завершить тему по score тестов; threshold пока TBD.
 
 Flashcards:
-- self-rating в MVP не нужен;
+- принадлежат Topic и не существуют без Topic;
+- в MVP используется простое планирование для действий «Знаю»/«Повторить»;
 - FSRS не реализуется;
-- заложить данные для будущего FSRS: next_review_at, last_reviewed_at, repetitions или эквивалент;
 - одна текущая FlashcardReview на user+card;
 - история review events возможна позже.
 
@@ -165,10 +160,9 @@ MVP search: Django/PostgreSQL `icontains` по:
 - Search: icontains
 - Files: object storage + Media/File model
 - Docker: да
-- Backend hosting current plan: Render
-- Frontend hosting: Vercel
+- Backend и frontend в production работают под одним origin на собственном сервере.
 - Prod DB provider: TBD (Supabase PostgreSQL или другой managed Postgres)
-- Celery: TBD
+- Для синхронного Content API Celery и ImportJob не нужны.
 - Product analytics: не нужна в MVP
 - Sentry: позже
 
@@ -177,12 +171,12 @@ MVP search: Django/PostgreSQL `icontains` по:
 - DRF throttling нужен.
 - CORS ограничен frontend domains.
 - Technical logs нужны, включая auth/import errors.
-- Password reset/change password нужны.
-- Telegram unlink предусмотреть на будущее.
+- Password reset/change password не входят в текущий Telegram-only MVP.
+- Telegram unlink и account linking предусмотреть на будущее.
 - Self account delete нужен.
 - User deletion cascades progress/attempts.
 - UTC/timezone-aware timestamps.
-- API errors должны иметь единый формат, схема TBD.
+- API errors используют единый backend envelope с code, detail и optional fields.
 - DRF standard pagination.
 - Healthcheck: `/api/v1/health/`.
 
@@ -222,6 +216,7 @@ Redis уже одобрен для cache. Celery/Kafka/Elastic/Kubernetes/micros
 ## Read next
 
 1. `../decisions/0004-mvp-decision-register.md` и более новые ADR в `../decisions/`
+   (особенно `0008-mvp-auth-content-and-integration-contract.md`)
 2. `../product/mvp.md`
 3. `../architecture/overview.md`
 4. `../architecture/database.md`
