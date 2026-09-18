@@ -11,8 +11,8 @@ MedCore — web-сервис для подготовки студентов-ме
 `../decisions/0004-mvp-decision-register.md`
 
 Более новые ADR в `../decisions/` имеют приоритет над конфликтующим старым
-текстом. В частности, ADR 0006 переопределяет старое правило о полном запрете
-учебного контента без auth и разрешает ограниченный anonymous demo scope.
+текстом. ADR 0006 разрешает anonymous demo scope, а ADR 0007 фиксирует
+Topic-level access model `demo / free / paid`.
 
 AI-агент обязан прочитать decision register и более новые ADR перед
 существенными изменениями. Пункты, помеченные `TBD`, нельзя самостоятельно
@@ -75,8 +75,9 @@ API prefix: `/api/v1/`.
 - trial;
 - starts_at/expires_at;
 - backend-side paywall checks;
-- возможность free content;
-- будущую разную granularity paywall.
+- Topic-level access `demo / free / paid`;
+- active entitlement для `paid` Topic;
+- возможность позже расширить entitlement на разные планы/trial без изменения content ownership.
 
 Payment provider пока не выбран.
 
@@ -190,8 +191,12 @@ MVP search: Django/PostgreSQL `icontains` по:
 - mobile-first;
 - dark mode сразу;
 - базовая accessibility;
-- ограниченный demo-контент доступен anonymous users до auth;
-- полный учебный контент и персональный learning state требуют authentication;
+- публичный каталог/metadata допустим;
+- `demo` Topic доступен anonymous users;
+- `free` Topic требует authentication;
+- `paid` Topic требует authentication + entitlement;
+- `free`/`paid` Topic могут содержать явно отмеченные demo-preview элементы;
+- anonymous usage не создаёт персональный learning state;
 - slugs используются в человекочитаемых URL;
 - slug генерируется из title, может быть вручную переопределён и изменён позже.
 
