@@ -73,14 +73,14 @@ Redis является уже согласованной частью инфра
 - Content physically deleted in MVP.
 - Object storage для файлов; отдельная Media/File model.
 - Django Admin — CMS; bulk import/publish нужны, детали позже.
-- Ограниченный demo-контент может быть доступен anonymous users до auth; полный контент и user-specific learning требуют authentication.
+- Content access model: Topic-level `demo / free / paid`; public catalog metadata разрешён, `free` требует auth, `paid` требует auth + entitlement, а отдельные child elements могут быть demo-preview.
 - Backend enforces paywall.
 - Dark mode и mobile-first — сразу.
 - OpenAPI/Swagger — сразу.
 - Healthcheck: `/api/v1/health/`.
 
 Базовый реестр решений: `decisions/0004-mvp-decision-register.md`. Более новые
-ADR имеют приоритет; для anonymous demo access см. `decisions/0006-anonymous-demo-content.md`.
+ADR имеют приоритет; для anonymous demo access см. `decisions/0006-anonymous-demo-content.md`, для access model — `decisions/0007-content-access-model.md`.
 
 ## Content safety
 
