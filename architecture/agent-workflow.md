@@ -67,6 +67,27 @@ Human-controlled merge
 - unlimited persistence/retry loops;
 - write access для Advisor/Reviewer.
 
+## Multi-repository feature preflight
+
+Перед началом новой фичи, до создания feature-ветки и до изменений в коде,
+agent обязан синхронизировать все три репозитория MedCore на выбранных
+базовых ветках (обычно `main`) через fast-forward pull:
+
+```bash
+cd /home/roki/dev/medcore
+git -C medcore-docs pull --ff-only
+git -C medcore-backend pull --ff-only
+git -C medcore-frontend pull --ff-only
+```
+
+Перед pull нужно проверить `git status --short --branch` во всех трёх
+репозиториях. Незакоммиченные изменения, отсутствие upstream или diverged
+ветка — это `BLOCKED`: agent уведомляет владельца и не продолжает feature-
+работу. Agent не должен автоматически применять `stash`, `reset`, `checkout`,
+merge или rebase для обхода блокера. Preflight завершён только после
+успешного `git pull --ff-only` во всех трёх репозиториях; ветки и commit HEAD
+фиксируются в отчёте задачи.
+
 ## Task lifecycle
 
 Целевой lifecycle:
