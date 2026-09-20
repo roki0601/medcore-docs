@@ -19,8 +19,8 @@
 ## В MVP
 
 - Ограниченный anonymous demo-контент до авторизации.
-- Telegram auth + login/password.
-- Bearer JWT, access + refresh; refresh в httpOnly cookie; blacklist/revocation.
+- Только verified Telegram Login Widget для регистрации/входа в текущем MVP; password/email auth отложен.
+- Bearer JWT: access + non-rotating refresh; refresh в HttpOnly cookie; server-side revocation/blacklist.
 - `/api/v1/`.
 - Несколько предметов поддерживаются моделью и UI.
 - `Subject → Section → Topic`.
@@ -30,10 +30,10 @@
 - Content statuses: draft/generated/reviewed/published.
 - Manual content можно публиковать сразу.
 - Quiz attempts, сохранение незавершённого прогресса, retake без ограничений.
-- Topic progress: not_started/learning/learned, ручное и score-based completion.
+- Topic progress: not_started/learning/learned и ручное completion; score-based completion входит в целевое поведение, но threshold остаётся owner TBD.
 - Search `icontains` по Subject/Section/Topic + filters.
-- Django Admin как CMS, bulk import и bulk publish нужны.
-- Subscription сущность создаётся сразу; несколько тарифов и trial должны поддерживаться.
+- Django Admin как CMS + synchronous Content REST API с integration key; ImportJob/Celery не нужны. Отдельные bulk publish/import операции добавляются только по явному контракту.
+- Plan/Subscription/entitlement входят в MVP отдельной subscriptions/paywall feature; архитектура должна поддерживать несколько тарифов и trial, но точная status/trial/payment semantics остаётся TBD.
 - Content access на уровне Topic: `demo`, `free`, `paid`; paywall проверяет backend.
 - Redis для кэша.
 - Object storage + Media/File model.
@@ -82,5 +82,6 @@ AI-imported content получает `generated`; manual content может ср
 
 Базовый реестр обсуждённых решений и TBD: `../decisions/0004-mvp-decision-register.md`.
 Более новые ADR в `../decisions/` имеют приоритет над конфликтующим старым
-текстом; anonymous demo access зафиксирован в ADR 0006, а модель
-`demo/free/paid` — в ADR 0007.
+текстом; anonymous demo access зафиксирован в ADR 0006, модель
+`demo/free/paid` — в ADR 0007, а Telegram-only auth, synchronous Content API и
+one-origin hosting — в ADR 0008.
