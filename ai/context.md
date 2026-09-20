@@ -18,6 +18,28 @@ AI-агент обязан прочитать decision register и более н
 существенными изменениями. Пункты, помеченные `TBD`, нельзя самостоятельно
 превращать в принятые решения.
 
+## Current implementation snapshot (2026-09-20)
+
+This section is a factual delivery snapshot, not a replacement for accepted
+product decisions.
+
+Backend `main` already contains:
+
+- Telegram auth/account lifecycle (001);
+- catalog and Topic access `demo/free/paid` (002);
+- synchronous content authoring API and media access/storage boundary (004);
+- topic progress, flashcard review and quiz attempts (003);
+- OpenAPI/runtime contract alignment.
+
+The subscriptions app currently exposes only the deny-by-default entitlement
+policy seam. Plan/Subscription storage, real paid entitlement and payment
+integration are not implemented yet and are the next backend product boundary.
+
+Frontend production already contains the catalog/anonymous demo (FE-001) and
+Telegram auth/account lifecycle (FE-002). Protected media rendering (FE-003)
+and learning progress (FE-004) have their backend dependencies merged and may
+be started after the mandatory fresh contract/preflight check.
+
 ## Current MVP idea
 
 Новый пользователь может до авторизации посмотреть ограниченный
@@ -65,7 +87,7 @@ API prefix: `/api/v1/`.
 
 Подписки отделены от ролей. `premium` не является ролью.
 
-`Subscription` создаётся сразу. Архитектура должна поддерживать:
+Plan/Subscription/entitlement входят в MVP отдельной feature. Архитектура должна поддерживать:
 - несколько тарифов;
 - trial;
 - starts_at/expires_at;
@@ -130,7 +152,7 @@ Flashcards:
 - Незавершённый тест сохраняет progress.
 - Timeout не нужен.
 - Глобального pass percentage пока нет.
-- Ошибки/неправильные ответы пользователя нужно хранить, но полную QuizAttemptAnswer по каждому ответу решено не хранить; точная модель TBD.
+- Незавершённая попытка хранит выбранные answer IDs; submitted result замораживается. Глобальный pass threshold остаётся TBD, как и owner-решение о раскрытии correct answers при unlimited retakes.
 
 ## Search
 
