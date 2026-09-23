@@ -7,7 +7,7 @@
 ## Основной сценарий
 
 1. Новый пользователь может без авторизации посмотреть ограниченный demo-контент и понять формат продукта.
-2. Для полноценного использования пользователь регистрируется или входит.
+2. Для полноценного использования пользователь регистрируется или входит через Telegram.
 3. Выбирает предмет.
 4. Выбирает раздел и тему.
 5. Читает материал.
@@ -15,6 +15,7 @@
 7. Проходит тесты.
 8. Отмечает тему изученной и/или получает автоматическое завершение по score.
 9. Видит прогресс.
+10. Для paid-контента при необходимости покупает период доступа через Robokassa.
 
 ## В MVP
 
@@ -24,7 +25,7 @@
 - `/api/v1/`.
 - Несколько предметов поддерживаются моделью и UI.
 - `Subject → Section → Topic`.
-- Slug URL.
+- Canonical slug URL: `/{subject_slug}` и `/{subject_slug}/{topic_slug}`.
 - Optional ContentBlock/Flashcard/Quiz/Source.
 - Markdown.
 - Content statuses: draft/generated/reviewed/published.
@@ -33,13 +34,16 @@
 - Topic progress: not_started/learning/learned и ручное completion; score-based completion входит в целевое поведение, но threshold остаётся owner TBD.
 - Search `icontains` по Subject/Section/Topic + filters.
 - Django Admin как CMS + synchronous Content REST API с integration key; ImportJob/Celery не нужны. Отдельные bulk publish/import операции добавляются только по явному контракту.
-- Plan/Subscription/entitlement входят в MVP отдельной subscriptions/paywall feature; архитектура должна поддерживать несколько тарифов и trial, но точная status/trial/payment semantics остаётся TBD.
+- `Plan` / `Subscription` / backend entitlement для `paid` контента.
+- Несколько тарифов допустимы; trial в текущем MVP не реализован.
+- Robokassa для разовой покупки периода тарифа, без recurring auto-debit.
 - Content access на уровне Topic: `demo`, `free`, `paid`; paywall проверяет backend.
 - Redis для кэша.
-- Object storage + Media/File model.
+- Media/File abstraction; production сейчас использует persistent local volume.
 - DRF throttling, CORS restrictions, technical logging.
 - OpenAPI/Swagger.
 - Mobile-first + dark mode.
+- Public SEO foundation: robots.txt, sitemap.xml, canonical metadata, public subject/topic pages.
 
 ## Не является частью MVP / TBD
 
@@ -49,16 +53,28 @@
 - Product event analytics.
 - Elasticsearch/OpenSearch.
 - Sentry — позже.
-- Celery — TBD.
-- Payment provider — TBD.
-- Конкретный object storage provider — TBD.
+- Celery.
+- Recurring card auto-debit.
+- Trial.
+- Managed/object-storage provider migration.
 - Staging environment сейчас не нужен.
 
 ## Roles / subscription
 
 Roles: user/editor/admin.
 
-Subscription не является ролью. `premium` не используется как permission-role. Subscription поддерживает тариф, status, starts_at, expires_at и будущий trial.
+Subscription не является ролью. `premium` не используется как permission-role.
+
+Текущая семантика:
+
+- `ACTIVE` и `CANCELLED` могут давать entitlement до `expires_at`;
+- валидное окно: `starts_at <= now < expires_at`;
+- cancel — at period end;
+- несколько перекрывающихся Subscription допустимы;
+- любой действующий Plan даёт доступ ко всему `paid` контенту;
+- trial пока отсутствует.
+
+Платёжная модель: one-time Robokassa purchase → Payment → Subscription.
 
 ## Content
 
@@ -78,10 +94,20 @@ AI-imported content получает `generated`; manual content может ср
 Главный access boundary — Topic; сложная система ACL/наследования по каждому
 уровню в MVP не вводится. Детали реализации preview/API задаёт content spec.
 
+## Production baseline
+
+- Public site: `https://prepmed.ru`.
+- Frontend + backend share one origin.
+- Caddy + Docker Compose on one VPS.
+- PostgreSQL + Redis in the production stack.
+- Media stored in a persistent local volume behind Media/File abstraction.
+- CI must be green before deploy.
+- Deploy uses the exact successful commit SHA and deploys backend/frontend independently.
+
 ## Source of truth
 
 Базовый реестр обсуждённых решений и TBD: `../decisions/0004-mvp-decision-register.md`.
 Более новые ADR в `../decisions/` имеют приоритет над конфликтующим старым
 текстом; anonymous demo access зафиксирован в ADR 0006, модель
-`demo/free/paid` — в ADR 0007, а Telegram-only auth, synchronous Content API и
-one-origin hosting — в ADR 0008.
+`demo/free/paid` — в ADR 0007, Telegram-only auth/synchronous Content API/
+one-origin hosting — в ADR 0008, subscription semantics — в ADR 0009.
